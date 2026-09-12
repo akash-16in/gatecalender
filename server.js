@@ -16,9 +16,38 @@ app.get('/', (req, res) => {
     res.sendFile(__dirname + '/gate2026_final.html');
 });
 
-mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/gate_planner')
-  .then(() => console.log('✅ Connected to MongoDB'))
-  .catch(err => console.error('❌ MongoDB Connection Error:', err));
+/* ── DATABASE CONNECTION ── */
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/gate_planner';
+
+mongoose.connect(MONGO_URI)
+  .then(() => console.log('✅ Connected to MongoDB Atlas (gate_planner)'))
+  .catch(err => console.error('❌ MongoDB Connection Error:', err.message));
+
+async function ensureDbConnected() {
+  if (mongoose.connection.readyState === 1) return true;
+  if (mongoose.connection.readyState === 2) {
+    await new Promise((resolve) => {
+      const timer = setTimeout(() => resolve(), 8000);
+      mongoose.connection.once('connected', () => {
+        clearTimeout(timer);
+        resolve();
+      });
+      mongoose.connection.once('error', () => {
+        clearTimeout(timer);
+        resolve();
+      });
+    });
+    return true;
+  }
+  if (mongoose.connection.readyState === 0) {
+    try {
+      await mongoose.connect(MONGO_URI);
+    } catch(e) {
+      console.error('Reconnection error:', e.message);
+    }
+  }
+  return true;
+}
 
 /* ── USER MODEL ── */
 const UserSchema = new mongoose.Schema({
@@ -64,9 +93,7 @@ function authenticateToken(req, res, next) {
 /* ── AUTH ROUTES ── */
 app.post('/api/auth/register', async (req, res) => {
   try {
-    if (mongoose.connection.readyState !== 1) {
-      return res.status(503).json({ error: 'Database is connecting to MongoDB Atlas. Please retry in a moment.' });
-    }
+    await ensureDbConnected();
 
     const { name, email, password, sem, collegeName } = req.body;
     if (!name || !email || !password || !sem || !collegeName) {
@@ -119,9 +146,7 @@ app.post('/api/auth/register', async (req, res) => {
 
 app.post('/api/auth/login', async (req, res) => {
   try {
-    if (mongoose.connection.readyState !== 1) {
-      return res.status(503).json({ error: 'Database is connecting to MongoDB Atlas. Please retry in a moment.' });
-    }
+    await ensureDbConnected();
 
     const { email, password } = req.body;
     if (!email || !password) {
@@ -183,6 +208,7 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
 /* ── USER-SCOPED CALENDAR DAYS API ── */
 app.get('/api/days', authenticateToken, async (req, res) => {
   try {
+    await ensureDbConnected();
     const days = await Day.find({ userId: req.user.userId });
     const map = {};
     days.forEach(d => {
@@ -203,6 +229,7 @@ app.get('/api/days', authenticateToken, async (req, res) => {
 
 app.post('/api/days/:dateKey', authenticateToken, async (req, res) => {
   try {
+    await ensureDbConnected();
     const updateData = {
       userId: req.user.userId,
       dateKey: req.params.dateKey,
