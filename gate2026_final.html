@@ -847,16 +847,51 @@ const registerForm = document.getElementById('registerForm');
 const authSub = document.getElementById('authSub');
 const authAlert = document.getElementById('authAlert');
 
+const API_BASE = (window.location.protocol === 'http:' || window.location.protocol === 'https:') ? '' : 'http://localhost:5000';
+
+/* ── LOCAL AUTH / OFFLINE HELPER ── */
+function getLocalUsers() {
+  try { return JSON.parse(localStorage.getItem('gate_local_users') || '[]'); } catch(e) { return []; }
+}
+function saveLocalUser(user) {
+  const users = getLocalUsers();
+  users.push(user);
+  localStorage.setItem('gate_local_users', JSON.stringify(users));
+}
+
 function clearAuthAlert() {
   authAlert.className = 'auth-alert';
-  authAlert.textContent = '';
+  authAlert.innerHTML = '';
   authAlert.style.display = 'none';
 }
 
-function showAuthAlert(msg, type = 'error') {
+function showAuthAlert(msg, type = 'error', allowOffline = false, pendingData = null) {
   authAlert.className = `auth-alert ${type}`;
-  authAlert.textContent = (type === 'error' ? '⚠️ ' : '✦ ') + msg;
+  let html = `<span>${type === 'error' ? '⚠️ ' : '✦ '} ${msg}</span>`;
+  if (allowOffline && pendingData) {
+    html += `<button type="button" id="offlineFallbackBtn" style="margin-left:auto;background:#7c3aed;color:#fff;border:none;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;">⚡ Use Local Mode</button>`;
+  }
+  authAlert.innerHTML = html;
   authAlert.style.display = 'flex';
+
+  const offBtn = document.getElementById('offlineFallbackBtn');
+  if (offBtn) {
+    offBtn.onclick = () => {
+      clearAuthAlert();
+      const localId = 'local_' + Date.now();
+      const user = {
+        id: localId,
+        name: pendingData.name || pendingData.email.split('@')[0],
+        email: pendingData.email,
+        sem: pendingData.sem || 'Sem 6',
+        collegeName: pendingData.collegeName || 'Local Workspace',
+        password: pendingData.password
+      };
+      saveLocalUser(user);
+      setSession('local_token_' + localId, user);
+      showToast('✦ Started in Local Mode for ' + user.name);
+    };
+  }
 }
 
 tabLogin.onclick = () => {
@@ -948,7 +983,7 @@ loginForm.onsubmit = async (e) => {
   btn.querySelector('.btn-text').textContent = 'Authenticating...';
 
   try {
-    const res = await fetch('/api/auth/login', {
+    const res = await fetch(`${API_BASE}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
@@ -960,7 +995,19 @@ loginForm.onsubmit = async (e) => {
     setSession(data.token, data.user);
     showToast('✦ Welcome back, ' + data.user.name + '!');
   } catch (err) {
-    showAuthAlert(err.message || 'Login failed. Check credentials.');
+    // Check local users if offline
+    const localUsers = getLocalUsers();
+    const matchedLocal = localUsers.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
+    if (matchedLocal) {
+      setSession('local_token_' + matchedLocal.id, matchedLocal);
+      showToast('✦ Logged in (Local Mode): ' + matchedLocal.name);
+    } else {
+      const isNetwork = err.message.includes('Failed to fetch') || err.message.includes('NetworkError');
+      const msg = isNetwork 
+        ? 'Could not connect to backend server. Ensure node server.js is running.'
+        : err.message;
+      showAuthAlert(msg, 'error', isNetwork, { email, password });
+    }
   } finally {
     btn.disabled = false;
     btn.querySelector('.btn-text').textContent = 'Log In to Workspace';
@@ -977,8 +1024,24 @@ registerForm.onsubmit = async (e) => {
   const password = document.getElementById('regPassword').value;
   const btn = document.getElementById('regSubmitBtn');
 
+  if (!name || name.length < 2) {
+    showAuthAlert('Please enter your full name.');
+    return;
+  }
+  if (!email || !email.includes('@')) {
+    showAuthAlert('Please provide a valid email address.');
+    return;
+  }
   if (!sem) {
     showAuthAlert('Please select your current semester.');
+    return;
+  }
+  if (!collegeName) {
+    showAuthAlert('Please enter your college name.');
+    return;
+  }
+  if (password.length < 6) {
+    showAuthAlert('Password must be at least 6 characters long.');
     return;
   }
 
@@ -986,7 +1049,7 @@ registerForm.onsubmit = async (e) => {
   btn.querySelector('.btn-text').textContent = 'Creating Account...';
 
   try {
-    const res = await fetch('/api/auth/register', {
+    const res = await fetch(`${API_BASE}/api/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, password, sem, collegeName })
@@ -998,7 +1061,11 @@ registerForm.onsubmit = async (e) => {
     setSession(data.token, data.user);
     showToast('✦ Account created! Welcome, ' + data.user.name);
   } catch (err) {
-    showAuthAlert(err.message || 'Registration failed. Try again.');
+    const isNetwork = err.message.includes('Failed to fetch') || err.message.includes('NetworkError');
+    const msg = isNetwork
+      ? 'Cannot connect to backend server at ' + (API_BASE || 'http://localhost:5000') + '.'
+      : err.message;
+    showAuthAlert(msg, 'error', isNetwork, { name, email, password, sem, collegeName });
   } finally {
     btn.disabled = false;
     btn.querySelector('.btn-text').textContent = 'Create Account & Start Planning';
@@ -1010,8 +1077,18 @@ async function loadData() {
     document.getElementById('authWrap').classList.remove('hidden');
     return;
   }
+  
+  if (authToken.startsWith('local_token_')) {
+    const storageKey = 'gate_user_days_' + currentUser.id;
+    try {
+      D = JSON.parse(localStorage.getItem(storageKey) || '{}');
+    } catch(e) { D = {}; }
+    render();
+    return;
+  }
+
   try {
-    const response = await fetch('/api/days', {
+    const response = await fetch(`${API_BASE}/api/days`, {
       headers: {
         'Authorization': 'Bearer ' + authToken
       }
@@ -1024,6 +1101,12 @@ async function loadData() {
     render(); 
   } catch (error) {
     console.error('Data load error:', error);
+    // fallback to local cache
+    if (currentUser?.id) {
+      try {
+        D = JSON.parse(localStorage.getItem('gate_user_days_' + currentUser.id) || '{}');
+      } catch(e) { D = {}; }
+    }
     render();
   }
 }
@@ -1216,7 +1299,20 @@ document.getElementById('savebtn').onclick=()=>{
     entry.test={category:document.getElementById('tc').value.trim(),name:document.getElementById('tn').value.trim(),score:document.getElementById('tsc').value.trim()};
   }
   D[openKey] = entry;
-  fetch(`/api/days/${openKey}`, {
+  if (currentUser?.id) {
+    try {
+      localStorage.setItem('gate_user_days_' + currentUser.id, JSON.stringify(D));
+    } catch(e) {}
+  }
+
+  if (authToken.startsWith('local_token_')) {
+    document.getElementById('ov').classList.remove('open');
+    render();
+    showToast('✦ Day saved (Local Mode)!');
+    return;
+  }
+
+  fetch(`${API_BASE}/api/days/${openKey}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

@@ -64,15 +64,23 @@ function authenticateToken(req, res, next) {
 /* ── AUTH ROUTES ── */
 app.post('/api/auth/register', async (req, res) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ error: 'Database is connecting to MongoDB Atlas. Please retry in a moment.' });
+    }
+
     const { name, email, password, sem, collegeName } = req.body;
     if (!name || !email || !password || !sem || !collegeName) {
-      return res.status(400).json({ error: 'Please fill in all required fields' });
+      return res.status(400).json({ error: 'Please fill in all required fields (Name, Email, Password, Sem, College).' });
     }
 
     const cleanEmail = email.trim().toLowerCase();
     const existingUser = await User.findOne({ email: cleanEmail });
     if (existingUser) {
-      return res.status(400).json({ error: 'An account with this email already exists' });
+      return res.status(400).json({ error: 'An account with this email already exists. Please log in.' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -105,12 +113,16 @@ app.post('/api/auth/register', async (req, res) => {
     });
   } catch (error) {
     console.error('Registration error:', error);
-    res.status(500).json({ error: 'Registration failed. Please try again.' });
+    res.status(500).json({ error: error.message || 'Registration failed. Please check your network and try again.' });
   }
 });
 
 app.post('/api/auth/login', async (req, res) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ error: 'Database is connecting to MongoDB Atlas. Please retry in a moment.' });
+    }
+
     const { email, password } = req.body;
     if (!email || !password) {
       return res.status(400).json({ error: 'Please provide email and password' });
@@ -146,7 +158,7 @@ app.post('/api/auth/login', async (req, res) => {
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Login failed. Please try again.' });
+    res.status(500).json({ error: error.message || 'Login failed. Please check your network and try again.' });
   }
 });
 
