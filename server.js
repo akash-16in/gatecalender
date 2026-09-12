@@ -17,7 +17,8 @@ app.get('/', (req, res) => {
 });
 
 /* ── DATABASE CONNECTION ── */
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/gate_planner';
+const DEFAULT_ATLAS_URI = 'mongodb+srv://gateadmin:Sm9Rr6lnsyMdw1Jo@cluster0.7v2hhyu.mongodb.net/gate_planner?retryWrites=true&w=majority&appName=Cluster0';
+const MONGO_URI = process.env.MONGO_URI || DEFAULT_ATLAS_URI;
 
 mongoose.connect(MONGO_URI)
   .then(() => console.log('✅ Connected to MongoDB Atlas (gate_planner)'))
