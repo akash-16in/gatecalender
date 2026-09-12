@@ -97,7 +97,30 @@ body{font-family:'Space Grotesk',sans-serif;background:var(--bg);color:var(--txt
   transition:background .4s;
 }
 
-.hdr-right{display:flex;align-items:center;gap:8px}
+.hdr-right{display:flex;align-items:center;gap:10px}
+.user-chip{
+  display:flex;align-items:center;gap:9px;padding:4px 12px 4px 5px;
+  border-radius:99px;background:var(--card);border:1px solid var(--border2);
+  backdrop-filter:blur(10px);
+}
+.uavatar{
+  width:30px;height:30px;border-radius:50%;
+  background:linear-gradient(135deg,#7c3aed,#db2777);
+  color:#fff;font-weight:700;font-size:13px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 8px rgba(124,58,237,.4);
+}
+.uinfo{display:flex;flex-direction:column;line-height:1.2}
+.uname{font-size:12px;font-weight:700;color:var(--txt)}
+.umeta{font-size:10px;color:var(--txt2);font-weight:500;white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis}
+.logout-btn{
+  display:flex;align-items:center;gap:6px;padding:7px 13px;
+  border-radius:99px;cursor:pointer;border:1px solid rgba(239,68,68,.3);
+  background:rgba(239,68,68,.08);color:#fca5a5;font-size:11px;
+  font-weight:700;font-family:'Space Grotesk',sans-serif;
+  transition:all .2s;backdrop-filter:blur(8px);
+}
+.logout-btn:hover{background:rgba(239,68,68,.2);border-color:#ef4444;color:#fee2e2;transform:scale(1.05)}
 .theme-btn{display:flex;align-items:center;gap:7px;padding:7px 14px;border-radius:99px;cursor:pointer;border:1px solid var(--border2);background:var(--card);color:var(--txt2);font-size:11px;font-weight:600;font-family:'Space Grotesk',sans-serif;transition:all .2s;backdrop-filter:blur(8px);letter-spacing:.4px}
 .theme-btn:hover{background:var(--cardhov);color:var(--txt)}
 .ticon{font-size:14px}
@@ -340,17 +363,267 @@ body{font-family:'Space Grotesk',sans-serif;background:var(--bg);color:var(--txt
 /* divider */
 .div{height:1px;background:linear-gradient(90deg,transparent,var(--border2),transparent);margin-bottom:20px}
 
+/* ══════════════════════════════════
+   AUTHENTICATION VIEW (GLOSSY & MODERN)
+══════════════════════════════════ */
+.auth-wrap{
+  position:fixed;inset:0;z-index:300;
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;overflow-y:auto;
+  background:rgba(6,6,15,0.78);
+  backdrop-filter:blur(32px) saturate(180%);
+  transition:all .4s cubic-bezier(.16,1,.3,1);
+}
+[data-theme="light"] .auth-wrap{
+  background:rgba(244,242,255,0.82);
+}
+.auth-wrap.hidden{
+  opacity:0;visibility:hidden;pointer-events:none;transform:scale(1.04);
+}
+.auth-card{
+  position:relative;width:100%;max-width:490px;
+  background:var(--glass);
+  border:1px solid var(--border2);
+  border-radius:28px;
+  padding:36px 32px;
+  box-shadow:0 30px 90px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.2);
+  backdrop-filter:blur(32px) saturate(190%);
+  animation:authCardPop .5s cubic-bezier(.34,1.56,.64,1);
+  overflow:hidden;
+}
+@keyframes authCardPop{
+  from{transform:scale(.92) translateY(20px);opacity:0}
+  to{transform:scale(1) translateY(0);opacity:1}
+}
+.auth-glow{
+  position:absolute;top:-120px;left:50%;transform:translateX(-50%);
+  width:320px;height:240px;border-radius:50%;
+  background:radial-gradient(circle,rgba(124,58,237,.35),transparent 70%);
+  filter:blur(50px);pointer-events:none;
+}
+.auth-header{text-align:center;margin-bottom:24px;position:relative;z-index:1}
+.auth-logo{
+  width:56px;height:56px;border-radius:18px;margin:0 auto 14px;
+  background:linear-gradient(135deg,#6d28d9,#db2777,#ea580c);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 8px 32px rgba(109,40,217,.6);
+  animation:logoFloat 4s ease-in-out infinite alternate;
+}
+@keyframes logoFloat{
+  from{transform:translateY(0) rotate(0deg)}
+  to{transform:translateY(-5px) rotate(-3deg)}
+}
+.auth-logo svg{width:28px;height:28px}
+.auth-title{
+  font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px;line-height:1;margin-bottom:6px;
+}
+.auth-title .c{background:linear-gradient(135deg,#38bdf8,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.auth-sub{font-size:12px;color:var(--txt2);font-weight:500;letter-spacing:.3px}
+
+/* tabs glider */
+.auth-tabs{
+  display:flex;position:relative;background:var(--bg3);border:1px solid var(--border);
+  border-radius:14px;padding:4px;margin-bottom:20px;z-index:1;
+}
+.auth-tab{
+  flex:1;text-align:center;padding:10px 0;font-size:13px;font-weight:700;
+  color:var(--txt2);background:transparent;border:none;border-radius:10px;
+  cursor:pointer;position:relative;z-index:2;transition:color .25s;font-family:'Space Grotesk',sans-serif;
+}
+.auth-tab.active{color:#fff}
+.auth-tab-glider{
+  position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);
+  background:linear-gradient(135deg,#7c3aed,#db2777);
+  border-radius:10px;box-shadow:0 4px 18px rgba(124,58,237,.5);
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:1;
+}
+.auth-tab-glider.right{transform:translateX(100%)}
+
+/* alert */
+.auth-alert{
+  display:none;padding:11px 14px;border-radius:12px;font-size:12px;font-weight:600;
+  margin-bottom:18px;position:relative;z-index:1;align-items:center;gap:9px;
+  animation:alertSlide .3s ease;
+}
+@keyframes alertSlide{
+  from{opacity:0;transform:translateY(-8px)}
+  to{opacity:1;transform:translateY(0)}
+}
+.auth-alert.error{display:flex;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.35);color:#fca5a5}
+.auth-alert.success{display:flex;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.35);color:#6ee7b7}
+
+/* forms */
+.auth-form{display:none;flex-direction:column;gap:14px;position:relative;z-index:1}
+.auth-form.active{display:flex;animation:formFade .3s ease}
+@keyframes formFade{
+  from{opacity:0;transform:translateX(10px)}
+  to{opacity:1;transform:translateX(0)}
+}
+
+.input-row{display:grid;grid-template-columns:1fr 1.3fr;gap:10px}
+.input-group{display:flex;flex-direction:column;gap:5px}
+.input-label{font-size:11px;font-weight:700;color:var(--txt2);text-transform:uppercase;letter-spacing:.8px}
+.input-box{
+  position:relative;display:flex;align-items:center;
+  background:var(--bg3);border:1px solid var(--border2);border-radius:12px;
+  transition:all .22s;overflow:hidden;
+}
+.input-box:focus-within{
+  border-color:#a855f7;box-shadow:0 0 0 3px rgba(168,85,247,.25);background:var(--bg2);
+}
+.input-icon{padding-left:14px;font-size:15px;color:var(--txt3);pointer-events:none;display:flex;align-items:center}
+.auth-input,.auth-select{
+  width:100%;padding:11px 14px 11px 10px;
+  background:transparent;border:none;color:var(--txt);
+  font-family:'Space Grotesk',sans-serif;font-size:13px;outline:none;
+}
+.auth-select{cursor:pointer;padding-left:10px}
+.auth-select option{background:var(--bg2);color:var(--txt)}
+.pwd-toggle{
+  background:transparent;border:none;padding:0 14px;cursor:pointer;
+  font-size:14px;color:var(--txt3);transition:color .2s;
+}
+.pwd-toggle:hover{color:var(--txt)}
+
+.auth-btn{
+  margin-top:6px;padding:13px;border:none;border-radius:14px;
+  background:linear-gradient(135deg,#7c3aed,#db2777,#ea580c);
+  background-size:200% 200%;animation:bgs 4s ease infinite;
+  color:#fff;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;
+  letter-spacing:.5px;cursor:pointer;box-shadow:0 8px 28px rgba(124,58,237,.45);
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  transition:all .22s cubic-bezier(.34,1.56,.64,1);
+}
+.auth-btn:hover{transform:translateY(-2px);box-shadow:0 12px 36px rgba(124,58,237,.6)}
+.auth-btn:active{transform:scale(.98)}
+.auth-btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+
+.auth-footer{
+  text-align:center;margin-top:20px;font-size:11px;color:var(--txt3);
+  letter-spacing:.6px;font-weight:600;
+}
+
 /* responsive */
 @media(max-width:960px){.wrap{padding:0 14px 60px}.hdr{padding:0 14px;margin:0 -14px;gap:8px}.cal-grid,.dow-row{gap:6px}.dc{min-height:90px;padding:8px 7px;border-radius:14px}.dc-num{font-size:18px}}
-@media(max-width:768px){.hdr{height:auto;padding:12px 14px;flex-wrap:wrap;gap:10px;justify-content:center}.brand{width:100%;justify-content:center}.hdr-mid{order:2;flex-wrap:wrap;justify-content:center}.hdr-right{position:absolute;top:12px;right:14px}}
-@media(max-width:650px){.dc{min-height:68px;border-radius:10px;padding:7px 5px}.dc-num{font-size:15px}.ctag{display:none}.crown-badge{font-size:10px}.mpill{min-width:140px;font-size:14px;padding:7px 12px;letter-spacing:1.5px}.yr-btn{padding:4px 8px;font-size:11px}.modal{border-radius:22px}.mhero,.mbody{padding:18px 18px}.tgrid{grid-template-columns:1fr}.srow,.drow{grid-template-columns:1fr 68px}}
+@media(max-width:768px){.hdr{height:auto;padding:12px 14px;flex-wrap:wrap;gap:10px;justify-content:center}.brand{width:100%;justify-content:center}.hdr-mid{order:2;flex-wrap:wrap;justify-content:center}.hdr-right{position:static;width:100%;justify-content:center;flex-wrap:wrap}}
+@media(max-width:650px){.auth-card{padding:26px 20px}.input-row{grid-template-columns:1fr}.uinfo{display:none}.user-chip{padding:4px}.dc{min-height:68px;border-radius:10px;padding:7px 5px}.dc-num{font-size:15px}.ctag{display:none}.crown-badge{font-size:10px}.mpill{min-width:140px;font-size:14px;padding:7px 12px;letter-spacing:1.5px}.yr-btn{padding:4px 8px;font-size:11px}.modal{border-radius:22px}.mhero,.mbody{padding:18px 18px}.tgrid{grid-template-columns:1fr}.srow,.drow{grid-template-columns:1fr 68px}}
 </style>
 </head>
 <body>
 <div class="scene"><div class="orb orb1"></div><div class="orb orb2"></div><div class="orb orb3"></div></div>
 <div class="noise"></div>
 
-<div class="wrap">
+<!-- ══════════════════════════════════
+     GLOSSY AUTH MODAL / VIEW
+══════════════════════════════════ -->
+<div class="auth-wrap" id="authWrap">
+  <div class="auth-card">
+    <div class="auth-glow"></div>
+    <div class="auth-header">
+      <div class="auth-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+      </div>
+      <h1 class="auth-title">GATE CSE <span class="c">PLANNER</span></h1>
+      <p class="auth-sub" id="authSub">Sign in to access your personal GATE study planner</p>
+    </div>
+
+    <!-- Tabs switcher with animated glider -->
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tabLogin" type="button">Sign In</button>
+      <button class="auth-tab" id="tabRegister" type="button">Create Account</button>
+      <div class="auth-tab-glider" id="tabGlider"></div>
+    </div>
+
+    <!-- Alert / Toast Banner -->
+    <div class="auth-alert" id="authAlert"></div>
+
+    <!-- Sign In Form -->
+    <form class="auth-form active" id="loginForm">
+      <div class="input-group">
+        <label class="input-label" for="loginEmail">Email Address</label>
+        <div class="input-box">
+          <span class="input-icon">✉️</span>
+          <input type="email" id="loginEmail" class="auth-input" placeholder="aspirant@gate.edu" required autocomplete="email"/>
+        </div>
+      </div>
+      <div class="input-group">
+        <label class="input-label" for="loginPassword">Password</label>
+        <div class="input-box">
+          <span class="input-icon">🔒</span>
+          <input type="password" id="loginPassword" class="auth-input" placeholder="••••••••" required autocomplete="current-password"/>
+          <button type="button" class="pwd-toggle" data-target="loginPassword" title="Toggle password visibility">👁️</button>
+        </div>
+      </div>
+      <button type="submit" class="auth-btn" id="loginSubmitBtn">
+        <span class="btn-text">Log In to Workspace</span>
+        <span class="btn-arrow">→</span>
+      </button>
+    </form>
+
+    <!-- Register Form -->
+    <form class="auth-form" id="registerForm">
+      <div class="input-group">
+        <label class="input-label" for="regName">Full Name</label>
+        <div class="input-box">
+          <span class="input-icon">👤</span>
+          <input type="text" id="regName" class="auth-input" placeholder="e.g. Akash Sharma" required autocomplete="name"/>
+        </div>
+      </div>
+      <div class="input-group">
+        <label class="input-label" for="regEmail">Email Address</label>
+        <div class="input-box">
+          <span class="input-icon">✉️</span>
+          <input type="email" id="regEmail" class="auth-input" placeholder="aspirant@gate.edu" required autocomplete="email"/>
+        </div>
+      </div>
+      <div class="input-row">
+        <div class="input-group">
+          <label class="input-label" for="regSem">Semester</label>
+          <div class="input-box">
+            <span class="input-icon">🎓</span>
+            <select id="regSem" class="auth-select" required>
+              <option value="" disabled selected>Select Sem</option>
+              <option value="Sem 1">Sem 1</option>
+              <option value="Sem 2">Sem 2</option>
+              <option value="Sem 3">Sem 3</option>
+              <option value="Sem 4">Sem 4</option>
+              <option value="Sem 5">Sem 5</option>
+              <option value="Sem 6">Sem 6</option>
+              <option value="Sem 7">Sem 7</option>
+              <option value="Sem 8">Sem 8</option>
+              <option value="Passout / Dropper">Passout / Dropper</option>
+            </select>
+          </div>
+        </div>
+        <div class="input-group">
+          <label class="input-label" for="regCollege">College Name</label>
+          <div class="input-box">
+            <span class="input-icon">🏛️</span>
+            <input type="text" id="regCollege" class="auth-input" placeholder="e.g. IIT Bombay / NIT" required/>
+          </div>
+        </div>
+      </div>
+      <div class="input-group">
+        <label class="input-label" for="regPassword">Password</label>
+        <div class="input-box">
+          <span class="input-icon">🔒</span>
+          <input type="password" id="regPassword" class="auth-input" placeholder="Min. 6 characters" required autocomplete="new-password" minlength="6"/>
+          <button type="button" class="pwd-toggle" data-target="regPassword" title="Toggle password visibility">👁️</button>
+        </div>
+      </div>
+      <button type="submit" class="auth-btn" id="regSubmitBtn">
+        <span class="btn-text">Create Account &amp; Start Planning</span>
+        <span class="btn-arrow">→</span>
+      </button>
+    </form>
+
+    <div class="auth-footer">
+      <span>✦ Personalized Multi-Year Study Tracking (2026 - 2028)</span>
+    </div>
+  </div>
+</div>
+
+<div class="wrap" id="mainApp">
 
   <!-- HEADER -->
   <header class="hdr">
@@ -374,6 +647,16 @@ body{font-family:'Space Grotesk',sans-serif;background:var(--bg);color:var(--txt
       <button class="mnav" id="next" title="Next Month">&#8594;</button>
     </div>
     <div class="hdr-right">
+      <div class="user-chip" id="userChip" style="display:none">
+        <div class="uavatar" id="uAvatar">A</div>
+        <div class="uinfo">
+          <div class="uname" id="uName">Aspirant</div>
+          <div class="umeta" id="uMeta">Sem · College</div>
+        </div>
+      </div>
+      <button class="logout-btn" id="logoutBtn" style="display:none" title="Log Out">
+        <span>Logout</span> 🚪
+      </button>
       <button class="theme-btn" id="tbtn"><span class="ticon" id="tico">🌙</span><span id="tlbl">Light Mode</span></button>
     </div>
   </header>
@@ -536,16 +819,214 @@ let cy=(now.getFullYear()>=2026 && now.getFullYear()<=2028)?now.getFullYear():20
 let cm=(now.getFullYear()===cy)?now.getMonth():0;
 let openKey=null,selMood=-1;
 
+let authToken = localStorage.getItem('gate_auth_token') || null;
+let currentUser = null;
+try {
+  const u = localStorage.getItem('gate_user_info');
+  if (u) currentUser = JSON.parse(u);
+} catch (e) {
+  currentUser = null;
+}
+
 let D = {};
-const sv = () => {}; 
-async function loadData() {
+
+/* ── TOAST NOTIFICATION ── */
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg || '✦ Day saved successfully!';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+/* ── AUTH UI HANDLING ── */
+const tabLogin = document.getElementById('tabLogin');
+const tabRegister = document.getElementById('tabRegister');
+const tabGlider = document.getElementById('tabGlider');
+const loginForm = document.getElementById('loginForm');
+const registerForm = document.getElementById('registerForm');
+const authSub = document.getElementById('authSub');
+const authAlert = document.getElementById('authAlert');
+
+function clearAuthAlert() {
+  authAlert.className = 'auth-alert';
+  authAlert.textContent = '';
+  authAlert.style.display = 'none';
+}
+
+function showAuthAlert(msg, type = 'error') {
+  authAlert.className = `auth-alert ${type}`;
+  authAlert.textContent = (type === 'error' ? '⚠️ ' : '✦ ') + msg;
+  authAlert.style.display = 'flex';
+}
+
+tabLogin.onclick = () => {
+  tabLogin.classList.add('active');
+  tabRegister.classList.remove('active');
+  tabGlider.classList.remove('right');
+  loginForm.classList.add('active');
+  registerForm.classList.remove('active');
+  authSub.textContent = 'Sign in to access your personal GATE study planner';
+  clearAuthAlert();
+};
+
+tabRegister.onclick = () => {
+  tabRegister.classList.add('active');
+  tabLogin.classList.remove('active');
+  tabGlider.classList.add('right');
+  registerForm.classList.add('active');
+  loginForm.classList.remove('active');
+  authSub.textContent = 'Create an account to start your fresh study journey';
+  clearAuthAlert();
+};
+
+// Password reveal/hide
+document.querySelectorAll('.pwd-toggle').forEach(btn => {
+  btn.onclick = () => {
+    const targetId = btn.dataset.target;
+    const inp = document.getElementById(targetId);
+    if (!inp) return;
+    if (inp.type === 'password') {
+      inp.type = 'text';
+      btn.textContent = '🙈';
+    } else {
+      inp.type = 'password';
+      btn.textContent = '👁️';
+    }
+  };
+});
+
+function updateUserUI() {
+  const chip = document.getElementById('userChip');
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (currentUser && authToken) {
+    chip.style.display = 'flex';
+    logoutBtn.style.display = 'flex';
+    document.getElementById('uName').textContent = currentUser.name || 'Aspirant';
+    document.getElementById('uMeta').textContent = (currentUser.sem || 'Sem') + ' · ' + (currentUser.collegeName || 'College');
+    const initials = (currentUser.name || 'A').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+    document.getElementById('uAvatar').textContent = initials || 'A';
+  } else {
+    chip.style.display = 'none';
+    logoutBtn.style.display = 'none';
+  }
+}
+
+function setSession(token, user) {
+  authToken = token;
+  currentUser = user;
   try {
-    const response = await fetch('/api/days')
+    localStorage.setItem('gate_auth_token', token);
+    localStorage.setItem('gate_user_info', JSON.stringify(user));
+  } catch (e) {}
+  updateUserUI();
+  document.getElementById('authWrap').classList.add('hidden');
+  loadData();
+}
+
+function logout() {
+  authToken = null;
+  currentUser = null;
+  D = {};
+  try {
+    localStorage.removeItem('gate_auth_token');
+    localStorage.removeItem('gate_user_info');
+  } catch (e) {}
+  updateUserUI();
+  document.getElementById('authWrap').classList.remove('hidden');
+  render();
+}
+
+document.getElementById('logoutBtn').onclick = logout;
+
+loginForm.onsubmit = async (e) => {
+  e.preventDefault();
+  clearAuthAlert();
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const btn = document.getElementById('loginSubmitBtn');
+  btn.disabled = true;
+  btn.querySelector('.btn-text').textContent = 'Authenticating...';
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Login failed');
+    }
+    setSession(data.token, data.user);
+    showToast('✦ Welcome back, ' + data.user.name + '!');
+  } catch (err) {
+    showAuthAlert(err.message || 'Login failed. Check credentials.');
+  } finally {
+    btn.disabled = false;
+    btn.querySelector('.btn-text').textContent = 'Log In to Workspace';
+  }
+};
+
+registerForm.onsubmit = async (e) => {
+  e.preventDefault();
+  clearAuthAlert();
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const sem = document.getElementById('regSem').value;
+  const collegeName = document.getElementById('regCollege').value.trim();
+  const password = document.getElementById('regPassword').value;
+  const btn = document.getElementById('regSubmitBtn');
+
+  if (!sem) {
+    showAuthAlert('Please select your current semester.');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.querySelector('.btn-text').textContent = 'Creating Account...';
+
+  try {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password, sem, collegeName })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Registration failed');
+    }
+    setSession(data.token, data.user);
+    showToast('✦ Account created! Welcome, ' + data.user.name);
+  } catch (err) {
+    showAuthAlert(err.message || 'Registration failed. Try again.');
+  } finally {
+    btn.disabled = false;
+    btn.querySelector('.btn-text').textContent = 'Create Account & Start Planning';
+  }
+};
+
+async function loadData() {
+  if (!authToken) {
+    document.getElementById('authWrap').classList.remove('hidden');
+    return;
+  }
+  try {
+    const response = await fetch('/api/days', {
+      headers: {
+        'Authorization': 'Bearer ' + authToken
+      }
+    });
+    if (response.status === 401 || response.status === 403) {
+      logout();
+      return;
+    }
     D = await response.json();
     render(); 
-  } catch (error) { console.error('No backend:', error); }
+  } catch (error) {
+    console.error('Data load error:', error);
+    render();
+  }
 }
-loadData();
 
 const getDaysInMonth=(y,m)=>new Date(y,m+1,0).getDate();
 const dkey=(y,m,d)=>`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
@@ -712,6 +1193,10 @@ document.getElementById('ov').addEventListener('click',e=>{if(e.target===documen
 
 document.getElementById('savebtn').onclick=()=>{
   if(!openKey)return;
+  if(!authToken){
+    document.getElementById('authWrap').classList.remove('hidden');
+    return;
+  }
   const subjects=[];
   document.querySelectorAll('.srow').forEach(r=>{
     const n=r.querySelector('.sn').value.trim();
@@ -733,14 +1218,23 @@ document.getElementById('savebtn').onclick=()=>{
   D[openKey] = entry;
   fetch(`/api/days/${openKey}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + authToken
+    },
     body: JSON.stringify(entry)
-  }).then(() => {
+  }).then((res) => {
+    if(res.status === 401 || res.status === 403) {
+      logout();
+      return;
+    }
     document.getElementById('ov').classList.remove('open');
     render();
-    const t = document.getElementById('toast');
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2400);
+    showToast('✦ Day saved successfully!');
+  }).catch(() => {
+    document.getElementById('ov').classList.remove('open');
+    render();
+    showToast('✦ Saved locally');
   });
 };
 
@@ -782,7 +1276,16 @@ document.getElementById('tbtn').onclick=()=>{
 };
 try{const t=localStorage.getItem('gate26_theme');if(t&&t!==theme){theme=t;document.documentElement.setAttribute('data-theme',theme);document.getElementById('tico').textContent=t==='dark'?'🌙':'☀️';document.getElementById('tlbl').textContent=t==='dark'?'Light Mode':'Dark Mode'}}catch(e){}
 
-render();
+/* ── APP INITIALIZATION ── */
+if(authToken && currentUser) {
+  updateUserUI();
+  document.getElementById('authWrap').classList.add('hidden');
+  loadData();
+} else {
+  updateUserUI();
+  document.getElementById('authWrap').classList.remove('hidden');
+  render();
+}
 </script>
 </body>
 </html>
