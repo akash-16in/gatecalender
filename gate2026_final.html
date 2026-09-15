@@ -1130,7 +1130,12 @@ function getLocalUsers() {
 }
 function saveLocalUser(user) {
   const users = getLocalUsers();
-  users.push(user);
+  const existingIdx = users.findIndex(u => u.email.toLowerCase() === (user.email || '').toLowerCase());
+  if (existingIdx >= 0) {
+    users[existingIdx] = { ...users[existingIdx], ...user };
+  } else {
+    users.push(user);
+  }
   localStorage.setItem('gate_local_users', JSON.stringify(users));
 }
 
@@ -1153,17 +1158,16 @@ function showAuthAlert(msg, type = 'error', allowOffline = false, pendingData = 
   if (offBtn) {
     offBtn.onclick = () => {
       clearAuthAlert();
-      const localId = 'local_' + Date.now();
+      const localId = 'local_' + (pendingData.email ? pendingData.email.replace(/[^a-zA-Z0-9]/g, '_') : Date.now());
       const user = {
         id: localId,
-        name: pendingData.name || pendingData.email.split('@')[0],
-        email: pendingData.email,
+        name: pendingData.name || (pendingData.email ? pendingData.email.split('@')[0] : 'Aspirant'),
+        email: pendingData.email || '',
         sem: pendingData.sem || 'Sem 6',
         collegeName: pendingData.collegeName || 'Local Workspace',
-        password: pendingData.password
+        password: pendingData.password || ''
       };
-      saveLocalUser(user);
-      setSession('local_token_' + localId, user);
+      setSession('local_token_' + localId, user, pendingData.password);
       showToast('✦ Started in Local Mode for ' + user.name);
     };
   }
@@ -1221,15 +1225,43 @@ function updateUserUI() {
   }
 }
 
-function setSession(token, user) {
+function setSession(token, user, plainPassword = null) {
   authToken = token;
   currentUser = user;
   try {
     localStorage.setItem('gate_auth_token', token);
     localStorage.setItem('gate_user_info', JSON.stringify(user));
   } catch (e) {}
+
+  // Sync to local credentials cache for offline login capability
+  if (user && user.email) {
+    try {
+      saveLocalUser({
+        id: user.id || user._id,
+        name: user.name,
+        email: user.email.toLowerCase(),
+        sem: user.sem,
+        collegeName: user.collegeName,
+        password: plainPassword || '',
+        token: token
+      });
+    } catch(e) {}
+  }
+
+  // Immediately load cached days for this user
+  const uid = user.id || user._id;
+  if (uid) {
+    try {
+      const cached = JSON.parse(localStorage.getItem('gate_user_days_' + uid) || '{}');
+      if (cached && typeof cached === 'object' && !cached.error) {
+        D = cached;
+      }
+    } catch(e) {}
+  }
+
   updateUserUI();
   document.getElementById('authWrap').classList.add('hidden');
+  render();
   loadData();
 }
 
@@ -1267,19 +1299,19 @@ loginForm.onsubmit = async (e) => {
     if (!res.ok) {
       throw new Error(data.error || 'Login failed');
     }
-    setSession(data.token, data.user);
+    setSession(data.token, data.user, password);
     showToast('✦ Welcome back, ' + data.user.name + '!');
   } catch (err) {
-    // Check local users if offline
+    // Check local users if offline or server is temporarily unreachable
     const localUsers = getLocalUsers();
-    const matchedLocal = localUsers.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
+    const matchedLocal = localUsers.find(u => u.email.toLowerCase() === email.toLowerCase() && (!u.password || u.password === password));
     if (matchedLocal) {
-      setSession('local_token_' + matchedLocal.id, matchedLocal);
-      showToast('✦ Logged in (Local Mode): ' + matchedLocal.name);
+      setSession(matchedLocal.token || ('local_token_' + matchedLocal.id), matchedLocal, password);
+      showToast('✦ Logged in (Offline Cache Mode): ' + matchedLocal.name);
     } else {
-      const isNetwork = err.message.includes('Failed to fetch') || err.message.includes('NetworkError');
+      const isNetwork = err.message.includes('Failed to fetch') || err.message.includes('NetworkError') || err.message.includes('Cannot connect');
       const msg = isNetwork 
-        ? 'Could not connect to backend server. Ensure node server.js is running.'
+        ? 'Could not connect to backend server. Check connection or start server.'
         : err.message;
       showAuthAlert(msg, 'error', isNetwork, { email, password });
     }
@@ -1333,10 +1365,10 @@ registerForm.onsubmit = async (e) => {
     if (!res.ok) {
       throw new Error(data.error || 'Registration failed');
     }
-    setSession(data.token, data.user);
+    setSession(data.token, data.user, password);
     showToast('✦ Account created! Welcome, ' + data.user.name);
   } catch (err) {
-    const isNetwork = err.message.includes('Failed to fetch') || err.message.includes('NetworkError');
+    const isNetwork = err.message.includes('Failed to fetch') || err.message.includes('NetworkError') || err.message.includes('Cannot connect');
     const msg = isNetwork
       ? 'Cannot connect to backend server at ' + (API_BASE || 'http://localhost:5000') + '.'
       : err.message;
@@ -1348,17 +1380,25 @@ registerForm.onsubmit = async (e) => {
 };
 
 async function loadData() {
-  if (!authToken) {
+  if (!authToken || !currentUser) {
     document.getElementById('authWrap').classList.remove('hidden');
     return;
   }
   
-  if (authToken.startsWith('local_token_')) {
-    const storageKey = 'gate_user_days_' + currentUser.id;
+  const uid = currentUser.id || currentUser._id;
+
+  // 1. Immediately load local cached data so UI is instantly ready
+  if (uid) {
     try {
-      D = JSON.parse(localStorage.getItem(storageKey) || '{}');
-    } catch(e) { D = {}; }
-    render();
+      const cached = JSON.parse(localStorage.getItem('gate_user_days_' + uid) || '{}');
+      if (cached && typeof cached === 'object' && !cached.error) {
+        D = cached;
+        render();
+      }
+    } catch(e) {}
+  }
+
+  if (authToken.startsWith('local_token_')) {
     return;
   }
 
@@ -1372,16 +1412,24 @@ async function loadData() {
       logout();
       return;
     }
-    D = await response.json();
-    render(); 
-  } catch (error) {
-    console.error('Data load error:', error);
-    // fallback to local cache
-    if (currentUser?.id) {
-      try {
-        D = JSON.parse(localStorage.getItem('gate_user_days_' + currentUser.id) || '{}');
-      } catch(e) { D = {}; }
+    if (!response.ok) {
+      throw new Error(`Server returned HTTP ${response.status}`);
     }
+    const serverDays = await response.json();
+    if (serverDays && typeof serverDays === 'object' && !serverDays.error) {
+      // Merge server days with local cache to avoid losing any offline updates
+      const merged = { ...D, ...serverDays };
+      D = merged;
+      if (uid) {
+        try {
+          localStorage.setItem('gate_user_days_' + uid, JSON.stringify(D));
+        } catch(e) {}
+      }
+      render();
+    }
+  } catch (error) {
+    console.warn('Backend sync unavailable, using local cache:', error.message);
+    // Keep local cached days in D and render
     render();
   }
 }
@@ -1549,12 +1597,13 @@ document.getElementById('adddist').onclick=()=>addDRow();
 document.getElementById('cx').onclick=()=>document.getElementById('ov').classList.remove('open');
 document.getElementById('ov').addEventListener('click',e=>{if(e.target===document.getElementById('ov'))document.getElementById('ov').classList.remove('open')});
 
-document.getElementById('savebtn').onclick=()=>{
+document.getElementById('savebtn').onclick=async ()=>{
   if(!openKey)return;
-  if(!authToken){
+  if(!authToken || !currentUser){
     document.getElementById('authWrap').classList.remove('hidden');
     return;
   }
+  const uid = currentUser.id || currentUser._id;
   const subjects=[];
   document.querySelectorAll('.srow').forEach(r=>{
     const n=r.querySelector('.sn').value.trim();
@@ -1573,40 +1622,48 @@ document.getElementById('savebtn').onclick=()=>{
   if(new Date(parseInt(ys),parseInt(ms)-1,parseInt(ds)).getDay()===0){
     entry.test={category:document.getElementById('tc').value.trim(),name:document.getElementById('tn').value.trim(),score:document.getElementById('tsc').value.trim()};
   }
+
+  // 1. Immediately store in-memory and write to localStorage
   D[openKey] = entry;
-  if (currentUser?.id) {
+  if (uid) {
     try {
-      localStorage.setItem('gate_user_days_' + currentUser.id, JSON.stringify(D));
+      localStorage.setItem('gate_user_days_' + uid, JSON.stringify(D));
     } catch(e) {}
   }
+  document.getElementById('ov').classList.remove('open');
+  render();
 
   if (authToken.startsWith('local_token_')) {
-    document.getElementById('ov').classList.remove('open');
-    render();
     showToast('✦ Day saved (Local Mode)!');
     return;
   }
 
-  fetch(`${API_BASE}/api/days/${openKey}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + authToken
-    },
-    body: JSON.stringify(entry)
-  }).then((res) => {
-    if(res.status === 401 || res.status === 403) {
+  // 2. Sync to Cloud
+  try {
+    const res = await fetch(`${API_BASE}/api/days/${openKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + authToken
+      },
+      body: JSON.stringify(entry)
+    });
+
+    if (res.status === 401 || res.status === 403) {
       logout();
       return;
     }
-    document.getElementById('ov').classList.remove('open');
-    render();
-    showToast('✦ Day saved successfully!');
-  }).catch(() => {
-    document.getElementById('ov').classList.remove('open');
-    render();
-    showToast('✦ Saved locally');
-  });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `HTTP ${res.status}`);
+    }
+
+    showToast('✦ Day saved to Cloud & Local!');
+  } catch (err) {
+    console.warn('Cloud sync error, cached locally:', err.message);
+    showToast('✦ Saved locally (will sync when online)');
+  }
 };
 
 document.getElementById('prev').onclick=()=>{
@@ -1881,8 +1938,18 @@ try{const t=localStorage.getItem('gate26_theme');if(t&&t!==theme){theme=t;docume
 /* ── APP INITIALIZATION ── */
 updateCountDaysView();
 if(authToken && currentUser) {
+  const uid = currentUser.id || currentUser._id;
+  if (uid) {
+    try {
+      const cached = JSON.parse(localStorage.getItem('gate_user_days_' + uid) || '{}');
+      if (cached && typeof cached === 'object' && !cached.error) {
+        D = cached;
+      }
+    } catch(e) {}
+  }
   updateUserUI();
   document.getElementById('authWrap').classList.add('hidden');
+  render();
   loadData();
 } else {
   updateUserUI();

@@ -20,15 +20,35 @@ app.get('/', (req, res) => {
 const DEFAULT_ATLAS_URI = 'mongodb+srv://gateadmin:Sm9Rr6lnsyMdw1Jo@cluster0.7v2hhyu.mongodb.net/gate_planner?retryWrites=true&w=majority&appName=Cluster0';
 const MONGO_URI = process.env.MONGO_URI || DEFAULT_ATLAS_URI;
 
-mongoose.connect(MONGO_URI)
+const mongoOptions = {
+  serverSelectionTimeoutMS: 10000,
+  socketTimeoutMS: 45000,
+  family: 4, // Force IPv4 to prevent IPv6 DNS timeout delays on Windows/ISPs
+  maxPoolSize: 10,
+  minPoolSize: 2
+};
+
+mongoose.connect(MONGO_URI, mongoOptions)
   .then(() => console.log('✅ Connected to MongoDB Atlas (gate_planner)'))
   .catch(err => console.error('❌ MongoDB Connection Error:', err.message));
+
+mongoose.connection.on('error', (err) => {
+  console.error('⚠️ MongoDB Connection Error:', err.message);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('⚠️ MongoDB Disconnected. Attempting automatic reconnection...');
+});
+
+mongoose.connection.on('reconnected', () => {
+  console.log('✅ MongoDB Reconnected successfully.');
+});
 
 async function ensureDbConnected() {
   if (mongoose.connection.readyState === 1) return true;
   if (mongoose.connection.readyState === 2) {
     await new Promise((resolve) => {
-      const timer = setTimeout(() => resolve(), 8000);
+      const timer = setTimeout(() => resolve(), 6000);
       mongoose.connection.once('connected', () => {
         clearTimeout(timer);
         resolve();
@@ -38,13 +58,15 @@ async function ensureDbConnected() {
         resolve();
       });
     });
-    return true;
+    return mongoose.connection.readyState === 1;
   }
-  if (mongoose.connection.readyState === 0) {
+  if (mongoose.connection.readyState === 0 || mongoose.connection.readyState === 3) {
     try {
-      await mongoose.connect(MONGO_URI);
+      await mongoose.connect(MONGO_URI, mongoOptions);
+      return true;
     } catch(e) {
       console.error('Reconnection error:', e.message);
+      return false;
     }
   }
   return true;
@@ -188,8 +210,18 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+app.get('/api/health', (req, res) => {
+  const isConnected = mongoose.connection.readyState === 1;
+  res.json({
+    status: 'ok',
+    database: isConnected ? 'connected' : 'disconnected',
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
   try {
+    await ensureDbConnected();
     const user = await User.findById(req.user.userId).select('-password');
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json({
@@ -244,7 +276,7 @@ app.post('/api/days/:dateKey', authenticateToken, async (req, res) => {
     await Day.findOneAndUpdate(
       { userId: req.user.userId, dateKey: req.params.dateKey },
       updateData,
-      { upsert: true, new: true, setDefaultsOnInsert: true }
+      { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
     );
     res.json({ message: 'Saved' });
   } catch (error) {
