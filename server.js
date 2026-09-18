@@ -8,12 +8,14 @@ const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'gate-planner-secret-key-2026-2028';
 
 const app = express();
+const path = require('path');
+
 app.use(cors()); 
 app.use(express.json()); 
 app.use(express.static(__dirname));
 
 app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/gate2026_final.html');
+    res.sendFile(path.join(__dirname, 'gate2026_final.html'));
 });
 
 /* ── DATABASE CONNECTION ── */
@@ -286,6 +288,10 @@ app.post('/api/days/:dateKey', authenticateToken, async (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+    });
+}
+
+module.exports = app;
